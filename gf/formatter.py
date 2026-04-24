@@ -1,5 +1,13 @@
 import json
+import sys
 from typing import Any
+
+# Fix Windows console Unicode support
+if sys.stdout.encoding != 'utf-8':
+    try:
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass
 
 
 BG_COLOR = "#1a1a2e"
@@ -28,7 +36,7 @@ class RichFormatter:
         # Summary panel
         summary = f"""[cyan]Total Commits:[/cyan] {result.total_commits}
 [cyan]Total Authors:[/cyan] {result.total_authors}
-[cyan]Date Range:[/cyan] {result.date_range[0].strftime('%Y-%m-%d') if result.date_range else 'N/A'} → {result.date_range[1].strftime('%Y-%m-%d') if result.date_range else 'N/A'}"""
+[cyan]Date Range:[/cyan] {result.date_range[0].strftime('%Y-%m-%d') if result.date_range else 'N/A'} -> {result.date_range[1].strftime('%Y-%m-%d') if result.date_range else 'N/A'}"""
 
         console.print(Panel(summary, title="GitFingerprint Analysis", border_style=ACCENT))
 
@@ -146,7 +154,7 @@ Neg/Pos commits: {result.breakdown['negative_commits']}/{result.breakdown['posit
 
         console = self.console or Console()
 
-        burnout_indicator = "↑" if trend_data["burnout_trend"] > 10 else "↓" if trend_data["burnout_trend"] < -10 else "→"
+        burnout_indicator = "^" if trend_data["burnout_trend"] > 10 else "v" if trend_data["burnout_trend"] < -10 else "="
         trend_color = WARNING if trend_data["burnout_trend"] > 10 else SUCCESS
 
         trend_text = f"""[cyan]Period:[/cyan] Last {trend_data['period_days']} days

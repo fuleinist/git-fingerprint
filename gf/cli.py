@@ -1,6 +1,8 @@
+import json
 import os
 import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
 
 import click
@@ -25,8 +27,8 @@ def run_git_log(repo_path: str, max_count: int | None = None) -> str:
         "--format=%H%n%an%n%ae%n%at%n%s%n==END==",
     ]
     if max_count:
-        cmd.insert(3, str(max_count))
-    result = subprocess.run(cmd, capture_output=True, text=True)
+        cmd.insert(4, f"--max-count={max_count}")
+    result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
     if result.returncode != 0:
         raise click.ClickException(f"Git error: {result.stderr}")
     return result.stdout
@@ -38,7 +40,7 @@ def run_git_log_with_stats(repo_path: str) -> list[CommitInfo]:
         "log", "--all", "--numstat",
         "--format=%H%n%an%n%ae%n%at%n%s%n==END==",
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace")
     if result.returncode != 0:
         raise click.ClickException(f"Git error: {result.stderr}")
 
@@ -168,7 +170,7 @@ def analyze(repo, json_output, max_commits):
 
     if json_output:
         output = formatter.format_analysis(result, json_output=True)
-        click.echo_json(output)
+        click.echo(json.dumps(output))
     else:
         formatter.format_analysis(result)
         # Also show burnout
@@ -195,7 +197,7 @@ def trend(repo, json_output, days):
     formatter = RichFormatter()
 
     if json_output:
-        click.echo_json(trend_data)
+        click.echo(json.dumps(trend_data))
     else:
         formatter.format_trend(trend_data)
 
@@ -219,7 +221,7 @@ def burnout(repo, json_output):
     formatter = RichFormatter()
 
     if json_output:
-        click.echo_json(formatter._burnout_to_json(result))
+        click.echo(json.dumps(formatter._burnout_to_json(result)))
     else:
         formatter.format_burnout(result)
 
@@ -252,7 +254,7 @@ def report(repo, json_output, output):
             "analysis": formatter._analysis_to_json(result),
             "burnout": formatter._burnout_to_json(burnout),
         }
-        click.echo_json(report_data)
+        click.echo(json.dumps(report_data))
     else:
         formatter.format_analysis(result)
         formatter.format_burnout(burnout)

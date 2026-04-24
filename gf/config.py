@@ -2,6 +2,8 @@ import json
 import os
 from pathlib import Path
 
+from gf import __version__
+
 
 class Config:
     DEFAULT_DIR = ".gitfingerprint"
