@@ -1,0 +1,15 @@
+README.md
+pyproject.toml
+gf/__init__.py
+gf/analyzer.py
+gf/burnout.py
+gf/cli.py
+gf/config.py
+gf/formatter.py
+git_fingerprint.egg-info/PKG-INFO
+git_fingerprint.egg-info/SOURCES.txt
+git_fingerprint.egg-info/dependency_links.txt
+git_fingerprint.egg-info/entry_points.txt
+git_fingerprint.egg-info/requires.txt
+git_fingerprint.egg-info/top_level.txt
+tests/test_analyzer.py
