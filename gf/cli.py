@@ -205,7 +205,8 @@ def trend(repo, json_output, days):
 @cli.command()
 @click.option("--repo", callback=get_repo_path, help="Path to git repository")
 @click.option("--json", "json_output", is_flag=True, help="Output JSON")
-def burnout(repo, json_output):
+@click.option("--by-author", "by_author", is_flag=True, help="Show per-author burnout breakdown")
+def burnout(repo, json_output, by_author):
     """Focused burnout risk assessment."""
     try:
         log_output = run_git_log(repo)
@@ -216,14 +217,35 @@ def burnout(repo, json_output):
 
     commits = Analyzer.parse_commits(log_output)
     scorer = BurnoutScorer()
-    result = scorer.score(commits)
 
     formatter = RichFormatter()
 
-    if json_output:
-        click.echo(json.dumps(formatter._burnout_to_json(result)))
+    if by_author:
+        results = scorer.score_per_author(commits)
+        if json_output:
+            output = {author: formatter._burnout_to_json(result) for author, result in results.items()}
+            click.echo(json.dumps(output))
+        else:
+            for author, result in sorted(results.items(), key=lambda x: x[1].score, reverse=True):
+                score_color = SUCCESS if result.score < 40 else WARNING if result.score < 70 else WARNING
+                score_style = f"[{score_color}]{result.score}[/{score_color}]"
+                author_text = f"[cyan]Author:[/cyan] {author}\n[cyan]Score:[/cyan] {score_style}/100"
+                breakdown_text = (
+                    f"[cyan]Late-night:[/cyan] {result.late_night_factor}/30 | "
+                    f"[cyan]Spike:[/cyan] {result.frequency_spike_factor}/30 | "
+                    f"[cyan]Burst:[/cyan] {result.burst_factor}/25 | "
+                    f"[cyan]Sentiment:[/cyan] {result.sentiment_factor}/15"
+                )
+                from rich.console import Console
+                from rich.panel import Panel
+                console = Console()
+                console.print(Panel(author_text + "\n" + breakdown_text, title=author, border_style=score_color))
     else:
-        formatter.format_burnout(result)
+        result = scorer.score(commits)
+        if json_output:
+            click.echo(json.dumps(formatter._burnout_to_json(result)))
+        else:
+            formatter.format_burnout(result)
 
 
 @cli.command()

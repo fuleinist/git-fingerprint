@@ -104,3 +104,11 @@ class BurnoutScorer:
             sentiment_factor=round(sentiment_factor, 1),
             breakdown=breakdown,
         )
+
+    def score_per_author(self, commits: list[CommitInfo]) -> dict[str, BurnoutResult]:
+        """Score burnout for each author separately."""
+        by_author: dict[str, list[CommitInfo]] = defaultdict(list)
+        for c in commits:
+            by_author[c.author].append(c)
+
+        return {author: self.score(author_commits) for author, author_commits in by_author.items()}
