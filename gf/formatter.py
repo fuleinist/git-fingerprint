@@ -145,6 +145,59 @@ Neg/Pos commits: {result.breakdown['negative_commits']}/{result.breakdown['posit
             "breakdown": result.breakdown,
         }
 
+    def _author_burnout_to_json(self, result) -> dict:
+        return {
+            "author": result.author,
+            "commits": result.commits,
+            "score": result.score,
+            "late_night_factor": result.late_night_factor,
+            "frequency_spike_factor": result.frequency_spike_factor,
+            "burst_factor": result.burst_factor,
+            "sentiment_factor": result.sentiment_factor,
+            "breakdown": result.breakdown,
+        }
+
+    def format_burnout_by_author(self, results, json_output: bool = False) -> str | dict:
+        if json_output:
+            return [self._author_burnout_to_json(r) for r in results]
+
+        from rich.console import Console
+        from rich.table import Table
+        from rich.panel import Panel
+
+        console = self.console or Console()
+
+        console.print(Panel(
+            "[cyan]--by-author[/cyan] burnout breakdown — sorted by risk score",
+            title="Per-Author Burnout Assessment",
+            border_style=ACCENT,
+        ))
+
+        table = Table(title="Author Burnout Scores")
+        table.add_column("Author", style=PRIMARY)
+        table.add_column("Commits", style=ACCENT)
+        table.add_column("Score", style=ACCENT)
+        table.add_column("Late Night", style=PRIMARY)
+        table.add_column("Freq Spike", style=PRIMARY)
+        table.add_column("Burst", style=PRIMARY)
+        table.add_column("Sentiment", style=PRIMARY)
+
+        for r in results:
+            score_color = SUCCESS if r.score < 40 else WARNING if r.score < 70 else WARNING
+            table.add_row(
+                r.author,
+                str(r.commits),
+                f"[{score_color}]{r.score}[/{score_color}]",
+                f"{r.late_night_factor}/30",
+                f"{r.frequency_spike_factor}/30",
+                f"{r.burst_factor}/25",
+                f"{r.sentiment_factor}/15",
+            )
+
+        console.print(table)
+        console.print("[dim]Run `gf burnout --json --by-author` for machine-readable output[/dim]")
+        return ""
+
     def format_trend(self, trend_data: dict, json_output: bool = False) -> str | dict:
         if json_output:
             return trend_data

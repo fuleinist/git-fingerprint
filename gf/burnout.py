@@ -13,6 +13,18 @@ class BurnoutResult:
     breakdown: dict[str, float]
 
 
+@dataclass
+class AuthorBurnoutResult:
+    author: str
+    commits: int
+    score: float
+    late_night_factor: float
+    frequency_spike_factor: float
+    burst_factor: float
+    sentiment_factor: float
+    breakdown: dict[str, float]
+
+
 class BurnoutScorer:
     LATE_NIGHT_START = 23  # 11 PM
     LATE_NIGHT_END = 5     # 5 AM
@@ -104,3 +116,25 @@ class BurnoutScorer:
             sentiment_factor=round(sentiment_factor, 1),
             breakdown=breakdown,
         )
+
+    def score_by_author(self, commits: list) -> list[AuthorBurnoutResult]:
+        """Score burnout per author, sorted by score descending."""
+        from collections import defaultdict
+        by_author: dict[str, list] = defaultdict(list)
+        for c in commits:
+            by_author[c.author].append(c)
+
+        results = []
+        for author, author_commits in sorted(by_author.items(), key=lambda x: -len(x[1])):
+            r = self.score(author_commits)
+            results.append(AuthorBurnoutResult(
+                author=author,
+                commits=len(author_commits),
+                score=r.score,
+                late_night_factor=r.late_night_factor,
+                frequency_spike_factor=r.frequency_spike_factor,
+                burst_factor=r.burst_factor,
+                sentiment_factor=r.sentiment_factor,
+                breakdown=r.breakdown,
+            ))
+        return results

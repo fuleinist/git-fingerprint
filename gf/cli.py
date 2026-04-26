@@ -205,7 +205,8 @@ def trend(repo, json_output, days):
 @cli.command()
 @click.option("--repo", callback=get_repo_path, help="Path to git repository")
 @click.option("--json", "json_output", is_flag=True, help="Output JSON")
-def burnout(repo, json_output):
+@click.option("--by-author", is_flag=True, help="Show per-author burnout breakdown")
+def burnout(repo, json_output, by_author):
     """Focused burnout risk assessment."""
     try:
         log_output = run_git_log(repo)
@@ -216,14 +217,21 @@ def burnout(repo, json_output):
 
     commits = Analyzer.parse_commits(log_output)
     scorer = BurnoutScorer()
-    result = scorer.score(commits)
 
     formatter = RichFormatter()
 
-    if json_output:
-        click.echo(json.dumps(formatter._burnout_to_json(result)))
+    if by_author:
+        results = scorer.score_by_author(commits)
+        if json_output:
+            click.echo(json.dumps([formatter._author_burnout_to_json(r) for r in results]))
+        else:
+            formatter.format_burnout_by_author(results)
     else:
-        formatter.format_burnout(result)
+        result = scorer.score(commits)
+        if json_output:
+            click.echo(json.dumps(formatter._burnout_to_json(result)))
+        else:
+            formatter.format_burnout(result)
 
 
 @cli.command()
