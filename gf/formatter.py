@@ -83,9 +83,48 @@ class RichFormatter:
 
             console.print(author_table)
 
+        # Per-author breakdown
+        if result.author_breakdown:
+            breakdown_table = Table(title="Per-Author Breakdown")
+            breakdown_table.add_column("Author", style=PRIMARY)
+            breakdown_table.add_column("Commits", style=ACCENT)
+            breakdown_table.add_column("Avg Churn", style=ACCENT)
+            breakdown_table.add_column("Burnout", style=ACCENT)
+            breakdown_table.add_column("Peak Hour", style=ACCENT)
+            breakdown_table.add_column("Top Keywords", style=PRIMARY)
+
+            for author, stats in sorted(result.author_breakdown.items(), key=lambda x: -x[1].commits)[:10]:
+                hour_str = f"{stats.busiest_hour:02d}:00"
+                keywords_str = ", ".join(stats.top_keywords) if stats.top_keywords else "-"
+                burnout_color = SUCCESS if stats.burnout_score < 40 else WARNING if stats.burnout_score < 70 else WARNING
+                breakdown_table.add_row(
+                    author[:20] + "..." if len(author) > 20 else author,
+                    str(stats.commits),
+                    f"{stats.avg_churn:.0f}",
+                    f"[{burnout_color}]{stats.burnout_score:.0f}[/{burnout_color}]",
+                    hour_str,
+                    keywords_str,
+                )
+
+            console.print(breakdown_table)
+
         return ""
 
     def _analysis_to_json(self, result) -> dict:
+        author_breakdown_json = {}
+        for author, stats in result.author_breakdown.items():
+            author_breakdown_json[author] = {
+                "commits": stats.commits,
+                "avg_churn": stats.avg_churn,
+                "burnout_score": stats.burnout_score,
+                "busiest_hour": stats.busiest_hour,
+                "busiest_weekday": stats.busiest_weekday,
+                "first_commit": stats.first_commit,
+                "last_commit": stats.last_commit,
+                "refactor_ratio": stats.refactor_ratio,
+                "top_keywords": stats.top_keywords,
+            }
+
         return {
             "total_commits": result.total_commits,
             "total_authors": result.total_authors,
@@ -100,6 +139,7 @@ class RichFormatter:
                 result.date_range[0].isoformat() if result.date_range else None,
                 result.date_range[1].isoformat() if result.date_range else None,
             ],
+            "author_breakdown": author_breakdown_json,
         }
 
     def format_burnout(self, result, json_output: bool = False) -> str | dict:

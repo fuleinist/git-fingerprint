@@ -3,6 +3,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any
 
+from gf.burnout import BurnoutScorer, BurnoutResult
+
 
 @dataclass
 class CommitInfo:
@@ -14,6 +16,19 @@ class CommitInfo:
     insertions: int = 0
     deletions: int = 0
     churn: int = 0  # lines changed (additions + deletions)
+
+
+@dataclass
+class AuthorStats:
+    commits: int = 0
+    avg_churn: float = 0.0
+    burnout_score: float = 0.0
+    busiest_hour: int = 0
+    busiest_weekday: int = 0
+    first_commit: str = ""
+    last_commit: str = ""
+    refactor_ratio: float = 0.0
+    top_keywords: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -30,6 +45,7 @@ class AnalysisResult:
     author_commits: dict[str, int] = field(default_factory=dict)
     date_range: tuple[datetime, datetime] | None = None
     commits_per_day: list[int] = field(default_factory=list)
+    author_breakdown: dict[str, AuthorStats] = field(default_factory=dict)
 
 
 class Analyzer:
@@ -79,6 +95,54 @@ class Analyzer:
 
         # Commits per day for trend
         result.commits_per_day = list(daily_counts.values())
+
+        # Author breakdown
+        author_commits_map: dict[str, list[CommitInfo]] = defaultdict(list)
+        for c in commits:
+            author_commits_map[c.author].append(c)
+
+        for author, author_commits in author_commits_map.items():
+            sorted_author = sorted(author_commits, key=lambda c: c.date)
+            total_churn = sum(c.churn for c in author_commits)
+            avg_churn = total_churn / len(author_commits) if author_commits else 0.0
+
+            # Per-author burnout
+            author_scorer = BurnoutScorer()
+            author_burnout = author_scorer.score(author_commits)
+
+            # Busiest hour and weekday
+            hour_counts: dict[int, int] = defaultdict(int)
+            weekday_counts: dict[int, int] = defaultdict(int)
+            for c in author_commits:
+                hour_counts[c.date.hour] += 1
+                weekday_counts[c.date.weekday()] += 1
+            busiest_hour = max(hour_counts, key=hour_counts.get) if hour_counts else 0
+            busiest_weekday = max(weekday_counts, key=weekday_counts.get) if weekday_counts else 0
+
+            # Refactor ratio for author
+            refactor_count = sum(1 for c in author_commits if "refactor" in c.message.lower())
+            author_refactor_ratio = refactor_count / len(author_commits) if author_commits else 0.0
+
+            # Top keywords (most common words in messages)
+            word_counts: dict[str, int] = defaultdict(int)
+            for c in author_commits:
+                words = c.message.lower().split()
+                for word in words:
+                    if len(word) > 4 and word not in {"which", "there", "their", "would", "could", "should", "where", "when", "what", "this", "that", "from", "with", "have", "been", "were", "they", "them", "your", "some", "also", "more", "into", "than"}:
+                        word_counts[word] += 1
+            top_keywords = [w for w, _ in sorted(word_counts.items(), key=lambda x: -x[1])][:5]
+
+            result.author_breakdown[author] = AuthorStats(
+                commits=len(author_commits),
+                avg_churn=round(avg_churn, 1),
+                burnout_score=author_burnout.score,
+                busiest_hour=busiest_hour,
+                busiest_weekday=busiest_weekday,
+                first_commit=sorted_author[0].date.strftime("%Y-%m-%d") if sorted_author else "",
+                last_commit=sorted_author[-1].date.strftime("%Y-%m-%d") if sorted_author else "",
+                refactor_ratio=round(author_refactor_ratio, 3),
+                top_keywords=top_keywords,
+            )
 
         # Author commits
         for c in commits:
