@@ -11,6 +11,19 @@ class BurnoutResult:
     burst_factor: float  # 0-25
     sentiment_factor: float  # 0-15
     breakdown: dict[str, float]
+    author: str | None = None  # author name when by-author
+
+
+@dataclass
+class AuthorBurnoutResult:
+    author: str
+    score: float
+    commit_count: int
+    late_night_factor: float
+    frequency_spike_factor: float
+    burst_factor: float
+    sentiment_factor: float
+    breakdown: dict[str, float]
 
 
 class BurnoutScorer:
@@ -103,4 +116,29 @@ class BurnoutScorer:
             burst_factor=round(burst_factor, 1),
             sentiment_factor=round(sentiment_factor, 1),
             breakdown=breakdown,
+            author=getattr(commits[0], 'author', None) if commits else None,
         )
+
+    def score_per_author(self, commits: list) -> list[AuthorBurnoutResult]:
+        """Score burnout per author."""
+        by_author: dict[str, list] = defaultdict(list)
+        for c in commits:
+            by_author[c.author].append(c)
+
+        results = []
+        for author, author_commits in by_author.items():
+            result = self.score(author_commits)
+            results.append(AuthorBurnoutResult(
+                author=author,
+                score=result.score,
+                commit_count=len(author_commits),
+                late_night_factor=result.late_night_factor,
+                frequency_spike_factor=result.frequency_spike_factor,
+                burst_factor=result.burst_factor,
+                sentiment_factor=result.sentiment_factor,
+                breakdown=result.breakdown,
+            ))
+
+        # Sort by score descending
+        results.sort(key=lambda x: x.score, reverse=True)
+        return results

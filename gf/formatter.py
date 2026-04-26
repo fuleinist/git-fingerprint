@@ -135,6 +135,44 @@ Neg/Pos commits: {result.breakdown['negative_commits']}/{result.breakdown['posit
 
         return ""
 
+    def format_burnout_by_author(self, results: list) -> str:
+        """Format per-author burnout breakdown."""
+        from rich.console import Console
+        from rich.table import Table
+        from rich.panel import Panel
+
+        console = self.console or Console()
+
+        console.print(Panel(
+            "[cyan]Per-author burnout breakdown[/cyan]",
+            title=f"Burnout by Author ({len(results)} authors)",
+            border_style=ACCENT,
+        ))
+
+        table = Table(title="Author Burnout Scores")
+        table.add_column("Author", style=PRIMARY)
+        table.add_column("Score", style=ACCENT)
+        table.add_column("Commits", style=PRIMARY)
+        table.add_column("Late Night", style=PRIMARY)
+        table.add_column("Spike/Drop", style=PRIMARY)
+        table.add_column("Burst", style=PRIMARY)
+        table.add_column("Sentiment", style=PRIMARY)
+
+        for r in results:
+            score_color = SUCCESS if r.score < 40 else WARNING if r.score < 70 else WARNING
+            table.add_row(
+                r.author[:30],
+                f"[{score_color}]{r.score}[/{score_color}]",
+                str(r.commit_count),
+                f"{r.late_night_factor:.0f}/30",
+                f"{r.frequency_spike_factor:.0f}/30",
+                f"{r.burst_factor:.0f}/25",
+                f"{r.sentiment_factor:.0f}/15",
+            )
+
+        console.print(table)
+        return ""
+
     def _burnout_to_json(self, result) -> dict:
         return {
             "score": result.score,
