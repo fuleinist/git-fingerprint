@@ -223,23 +223,19 @@ def burnout(repo, json_output, by_author):
     if by_author:
         results = scorer.score_per_author(commits)
         if json_output:
-            output = {author: formatter._burnout_to_json(result) for author, result in results.items()}
+            output = [{
+                "author": r.author,
+                "score": r.score,
+                "commit_count": r.commit_count,
+                "late_night_factor": r.late_night_factor,
+                "frequency_spike_factor": r.frequency_spike_factor,
+                "burst_factor": r.burst_factor,
+                "sentiment_factor": r.sentiment_factor,
+                "breakdown": r.breakdown,
+            } for r in results]
             click.echo(json.dumps(output))
         else:
-            for author, result in sorted(results.items(), key=lambda x: x[1].score, reverse=True):
-                score_color = SUCCESS if result.score < 40 else WARNING if result.score < 70 else WARNING
-                score_style = f"[{score_color}]{result.score}[/{score_color}]"
-                author_text = f"[cyan]Author:[/cyan] {author}\n[cyan]Score:[/cyan] {score_style}/100"
-                breakdown_text = (
-                    f"[cyan]Late-night:[/cyan] {result.late_night_factor}/30 | "
-                    f"[cyan]Spike:[/cyan] {result.frequency_spike_factor}/30 | "
-                    f"[cyan]Burst:[/cyan] {result.burst_factor}/25 | "
-                    f"[cyan]Sentiment:[/cyan] {result.sentiment_factor}/15"
-                )
-                from rich.console import Console
-                from rich.panel import Panel
-                console = Console()
-                console.print(Panel(author_text + "\n" + breakdown_text, title=author, border_style=score_color))
+            formatter.format_burnout_by_author(results)
     else:
         result = scorer.score(commits)
         if json_output:
